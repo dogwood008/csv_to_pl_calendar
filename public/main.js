@@ -3,6 +3,7 @@ const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 const calendarElement = document.getElementById("calendar");
 const yearForm = document.getElementById("yearForm");
 const yearInput = document.getElementById("yearInput");
+const yearError = document.getElementById("yearError");
 const monthTemplate = document.getElementById("monthTemplate");
 
 function createWeekdayHeaderRow() {
@@ -40,7 +41,14 @@ function renderCalendar(calendar) {
   const weekdayHeader = createWeekdayHeaderRow();
 
   calendar.months.forEach((month) => {
-    const monthNode = monthTemplate.content.firstElementChild.cloneNode(true);
+    const firstChild = monthTemplate.content.firstElementChild;
+    if (!firstChild) {
+      console.error(
+        "monthTemplate is malformed or empty: no firstElementChild found."
+      );
+      return;
+    }
+    const monthNode = firstChild.cloneNode(true);
     const header = monthNode.querySelector(".month-header");
     const weekdayRow = monthNode.querySelector(".weekday-row");
     const weeksBody = monthNode.querySelector(".weeks");
@@ -56,7 +64,25 @@ function renderCalendar(calendar) {
 async function fetchCalendar(year) {
   const response = await fetch(`/api/calendar?year=${encodeURIComponent(year)}`);
   if (!response.ok) {
-    throw new Error("カレンダーを取得できませんでした");
+    let errorMessage = `カレンダーを取得できませんでした (${response.status})`;
+    const bodyText = await response.text().catch(() => "");
+    if (bodyText) {
+      let errorDetail = bodyText;
+      try {
+        const data = JSON.parse(bodyText);
+        if (data && typeof data === "object") {
+          if (typeof data.error === "string" && data.error) {
+            errorDetail = data.error;
+          } else if (typeof data.message === "string" && data.message) {
+            errorDetail = data.message;
+          }
+        }
+      } catch {
+        // JSON に変換できない場合は生テキストを利用する
+      }
+      errorMessage += `: ${errorDetail}`;
+    }
+    throw new Error(errorMessage);
   }
   return response.json();
 }
@@ -67,7 +93,13 @@ async function loadCalendar(year) {
     renderCalendar(calendar);
   } catch (error) {
     console.error(error);
-    calendarElement.innerHTML = `<p class="error">カレンダーを読み込めませんでした。</p>`;
+    const message =
+      error instanceof Error ? error.message : "カレンダーを読み込めませんでした。";
+    calendarElement.innerHTML = "";
+    const paragraph = document.createElement("p");
+    paragraph.className = "error";
+    paragraph.textContent = message;
+    calendarElement.appendChild(paragraph);
   }
 }
 
@@ -78,8 +110,12 @@ function initYearForm() {
   yearForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const year = Number.parseInt(yearInput.value, 10);
-    if (Number.isNaN(year) || year <= 0) {
-      alert("年の指定が不正です");
+    const isValid = !Number.isNaN(year) && year > 0;
+    if (yearError) {
+      yearError.textContent = isValid ? "" : "年の指定が不正です";
+    }
+
+    if (!isValid) {
       return;
     }
     loadCalendar(year);
