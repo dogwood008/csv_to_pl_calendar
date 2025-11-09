@@ -1,5 +1,5 @@
 import express from "express";
-import path from "path";
+import path from "node:path";
 import { createYearCalendar, parseYear } from "./calendar";
 
 const DEFAULT_PORT = Number.parseInt(process.env.PORT ?? "3000", 10);
