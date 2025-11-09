@@ -1,6 +1,5 @@
 import express from "express";
-import path from "node:path";
-import open from "open";
+import path from "path";
 import { createYearCalendar, parseYear } from "./calendar";
 
 const DEFAULT_PORT = Number.parseInt(process.env.PORT ?? "3000", 10);
@@ -11,13 +10,24 @@ function resolvePublicDirectory(): string {
   return path.resolve(__dirname, "..", "public");
 }
 
+let openModulePromise: Promise<typeof import("open")> | null = null;
+
+async function loadOpenModule() {
+  if (!openModulePromise) {
+    openModulePromise = import("open");
+  }
+
+  return openModulePromise;
+}
+
 async function launchBrowser(url: string): Promise<void> {
   if (process.env.CI === "true" || process.env.DISABLE_BROWSER === "true") {
     return;
   }
 
   try {
-    await open(url);
+    const openModule = await loadOpenModule();
+    await openModule.default(url);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`ブラウザの自動起動に失敗しました: ${message}`);
@@ -58,9 +68,14 @@ async function start() {
   const app = createServer();
   const server = app.listen(DEFAULT_PORT, HOST, () => {
     const addressInfo = server.address();
-    const url = typeof addressInfo === "string" ? addressInfo : `http://${HOST}:${DEFAULT_PORT}`;
-    console.log(`${APP_TITLE} サーバーを起動しました: ${url}`);
-    void launchBrowser(url);
+    if (addressInfo && typeof addressInfo === "object") {
+      const url = `http://${HOST}:${addressInfo.port}`;
+      console.log(`${APP_TITLE} サーバーを起動しました: ${url}`);
+      void launchBrowser(url);
+    } else {
+      const address = addressInfo ?? "不明";
+      console.log(`${APP_TITLE} サーバーを起動しました: ${address}`);
+    }
   });
 }
 
