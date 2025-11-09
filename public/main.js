@@ -71,9 +71,9 @@ async function fetchCalendar(year) {
       try {
         const data = JSON.parse(bodyText);
         if (data && typeof data === "object") {
-          if ("error" in data && data.error) {
+          if (typeof data.error === "string" && data.error) {
             errorDetail = data.error;
-          } else if ("message" in data && data.message) {
+          } else if (typeof data.message === "string" && data.message) {
             errorDetail = data.message;
           }
         }
