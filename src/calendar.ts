@@ -27,15 +27,20 @@ function getDaysInMonth(year: number, monthIndex: number): number {
 
 function buildCalendarDay(year: number, monthIndex: number, day: number): CalendarDay {
   const currentDate = new Date();
-  const isoDate = new Date(Date.UTC(year, monthIndex, day)).toISOString().split("T")[0];
+  const date = new Date(year, monthIndex, day);
+  const isoDate = [
+    date.getFullYear(),
+    (date.getMonth() + 1).toString().padStart(2, "0"),
+    date.getDate().toString().padStart(2, "0"),
+  ].join("-");
 
   return {
     day,
     isoDate,
     isToday:
-      currentDate.getUTCFullYear() === year &&
-      currentDate.getUTCMonth() === monthIndex &&
-      currentDate.getUTCDate() === day,
+      currentDate.getFullYear() === year &&
+      currentDate.getMonth() === monthIndex &&
+      currentDate.getDate() === day,
   };
 }
 
