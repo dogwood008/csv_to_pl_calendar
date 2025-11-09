@@ -110,14 +110,13 @@ function initYearForm() {
   yearForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const year = Number.parseInt(yearInput.value, 10);
-    if (Number.isNaN(year) || year <= 0) {
-      if (yearError) {
-        yearError.textContent = "年の指定が不正です";
-      }
-      return;
-    }
+    const isValid = !Number.isNaN(year) && year > 0;
     if (yearError) {
-      yearError.textContent = "";
+      yearError.textContent = isValid ? "" : "年の指定が不正です";
+    }
+
+    if (!isValid) {
+      return;
     }
     loadCalendar(year);
   });
