@@ -108,7 +108,7 @@ export function parseYear(value: string | undefined, fallbackYear: number): numb
     throw new Error(`年は数値で指定してください: "${value}"`);
   }
 
-  if (!Number.isInteger(parsedYear) || parsedYear <= 0) {
+  if (parsedYear <= 0) {
     throw new Error(`年の指定が不正です（1以上の整数で指定してください）: "${value}"`);
   }
 
