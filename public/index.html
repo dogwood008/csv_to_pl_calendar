@@ -28,6 +28,28 @@
       <section id="calendar" class="calendar-grid" aria-live="polite"></section>
     </main>
 
+    <div
+      id="monthModal"
+      class="month-modal"
+      aria-hidden="true"
+      role="dialog"
+      aria-label="月の拡大表示"
+    >
+      <div class="month-modal__backdrop" data-modal-close></div>
+      <div class="month-modal__dialog">
+        <button
+          type="button"
+          id="modalCloseButton"
+          class="month-modal__close"
+          aria-label="閉じる"
+          data-modal-close
+        >
+          ×
+        </button>
+        <div id="modalCalendarContainer" class="month-modal__calendar"></div>
+      </div>
+    </div>
+
     <template id="monthTemplate">
       <article class="calendar-month">
         <header class="month-header"></header>

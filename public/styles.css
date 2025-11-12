@@ -12,6 +12,10 @@ body {
   flex-direction: column;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
 .app-header {
   padding: 1.5rem;
   background: linear-gradient(135deg, #1d4ed8, #3b82f6);
@@ -114,6 +118,14 @@ main {
   box-shadow: 0 12px 20px rgba(15, 23, 42, 0.1);
   display: flex;
   flex-direction: column;
+  cursor: zoom-in;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.calendar-month:focus-visible,
+.calendar-month:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.18);
 }
 
 .month-header {
@@ -186,4 +198,63 @@ main {
     flex-basis: 100%;
     text-align: right;
   }
+}
+
+.month-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.month-modal.is-open {
+  display: flex;
+}
+
+.month-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(1px);
+}
+
+.month-modal__dialog {
+  position: relative;
+  z-index: 1;
+  max-width: min(640px, 92vw);
+  width: 100%;
+  padding: 1.5rem 1.25rem 1.25rem;
+  border-radius: 1rem;
+  background: transparent;
+}
+
+.month-modal__close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  border: none;
+  background: rgba(15, 23, 42, 0.85);
+  color: #ffffff;
+  border-radius: 999px;
+  font-size: 1.2rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  cursor: pointer;
+}
+
+.month-modal__calendar .calendar-month {
+  cursor: default;
+  box-shadow: 0 18px 38px rgba(15, 23, 42, 0.3);
+  transform: none;
+}
+
+.month-modal__calendar .calendar-month:hover {
+  transform: none;
+}
+
+.month-modal__calendar .weeks td {
+  font-size: 1.1rem;
+  padding: 0.75rem 0;
 }
