@@ -4,7 +4,13 @@
 - `src/` contains all TypeScript sources (`server.ts` hosts Express wiring, `calendar.ts` handles date math); keep new modules colocated with their domain logic.
 - `public/` serves the static calendar UI that Express returns for every route; modify assets here and keep `index.html` self-contained.
 - `dist/` is generated output from `npm run build`; never edit it directly—treat it as disposable.
+- `docs/dummy.csv` provides the mock trade dataset that powers day-level P/L overlays; keep similar CSVs in `docs/`.
 - Root configs: `package.json` defines scripts, `tsconfig.json` governs compilation targets, and `.env` files (if added) should be listed in `.gitignore`.
+
+## UI & Feature Notes
+- カレンダーのセル背景は取引損益で色分け（プラス=緑、マイナス=赤、ゼロ=青）します。動作を変えない改修ではこの配色ルールを維持してください。
+- 月カードをクリックするとモーダルが開き、日別損益と取引詳細リスト、積み上げ損益チャートを表示します。DOM 構造やアクセシビリティ属性（`aria-*`）は崩さず拡張すること。
+- ヘッダーフォームには「表示」「年間推移」ボタンがあり、後者は年間チャートモーダルを開きます。ボタンの順序と縦棒区切りを保ったまま UI を改修してください。
 
 ## Build, Test, and Development Commands
 - `npm install` installs Express, ts-node, and TypeScript—rerun after updating dependencies.
@@ -33,4 +39,3 @@
 ## Communication
 
 ユーザとのコミュニケーションは、日本語で実施してください。
-
