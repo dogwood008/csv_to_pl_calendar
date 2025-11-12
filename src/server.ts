@@ -2,7 +2,9 @@ import express from "express";
 import path from "node:path";
 import { createYearCalendar, parseYear } from "./calendar";
 
-const DEFAULT_PORT = Number.parseInt(process.env.PORT ?? "3000", 10);
+const parsedPort = Number.parseInt(process.env.PORT ?? "3000", 10);
+const DEFAULT_PORT =
+  Number.isNaN(parsedPort) || parsedPort < 1 || parsedPort > 65535 ? 3000 : parsedPort;
 const HOST = process.env.HOST ?? "localhost";
 const APP_TITLE = "年間カレンダー";
 
@@ -45,7 +47,17 @@ function createServer() {
     let year: number;
 
     try {
-      const yearParam = typeof req.query.year === "string" ? req.query.year : undefined;
+      const { year: yearQuery } = req.query;
+
+      if (Array.isArray(yearQuery)) {
+        throw new Error("year パラメータは1つだけ指定してください");
+      }
+
+      if (typeof yearQuery === "object" && yearQuery !== null) {
+        throw new Error("year パラメータの形式が不正です");
+      }
+
+      const yearParam = typeof yearQuery === "string" ? yearQuery : undefined;
       year = parseYear(yearParam, now.getFullYear());
     } catch (error) {
       const message = error instanceof Error ? error.message : "不正なリクエストです";
@@ -57,7 +69,7 @@ function createServer() {
     res.json(calendar);
   });
 
-  app.use((_, res) => {
+  app.get("*", (_, res) => {
     res.sendFile(path.join(publicDirectory, "index.html"));
   });
 
@@ -76,6 +88,11 @@ async function start() {
       const address = addressInfo ?? "不明";
       console.log(`${APP_TITLE} サーバーを起動しました: ${address}`);
     }
+  });
+
+  server.on("error", (error: unknown) => {
+    console.error("Server failed to start:", error);
+    process.exit(1);
   });
 }
 
