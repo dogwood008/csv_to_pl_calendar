@@ -19,6 +19,7 @@ export interface CalendarMonth {
 export interface CalendarYear {
   year: number;
   months: CalendarMonth[];
+  weekdayLabels: WeekdayLabel[];
 }
 
 function getDaysInMonth(year: number, monthIndex: number): number {
@@ -31,11 +32,10 @@ function buildCalendarDay(
   day: number,
   today: Date,
 ): CalendarDay {
-  const date = new Date(year, monthIndex, day);
   const isoDate = [
-    date.getFullYear(),
-    (date.getMonth() + 1).toString().padStart(2, "0"),
-    date.getDate().toString().padStart(2, "0"),
+    year,
+    (monthIndex + 1).toString().padStart(2, "0"),
+    day.toString().padStart(2, "0"),
   ].join("-");
 
   return {
@@ -53,26 +53,25 @@ function createMonth(year: number, monthIndex: number, today: Date): CalendarMon
   const firstDayOfWeek = new Date(year, monthIndex, 1).getDay();
 
   const weeks: CalendarWeek[] = [];
-  let currentDay = 1;
+  let currentWeek: CalendarWeek = [];
 
-  let currentWeek: CalendarWeek = Array.from({ length: 7 }, () => null);
+  for (let i = 0; i < firstDayOfWeek; i += 1) {
+    currentWeek.push(null);
+  }
 
-  for (let weekday = 0; weekday < 7; weekday += 1) {
-    if (weekday >= firstDayOfWeek) {
-      currentWeek[weekday] = buildCalendarDay(year, monthIndex, currentDay, today);
-      currentDay += 1;
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    currentWeek.push(buildCalendarDay(year, monthIndex, day, today));
+
+    if (currentWeek.length === 7) {
+      weeks.push(currentWeek);
+      currentWeek = [];
     }
   }
-  weeks.push(currentWeek);
 
-  while (currentDay <= daysInMonth) {
-    currentWeek = Array.from({ length: 7 }, () => null);
-
-    for (let weekday = 0; weekday < 7 && currentDay <= daysInMonth; weekday += 1) {
-      currentWeek[weekday] = buildCalendarDay(year, monthIndex, currentDay, today);
-      currentDay += 1;
+  if (currentWeek.length > 0) {
+    while (currentWeek.length < 7) {
+      currentWeek.push(null);
     }
-
     weeks.push(currentWeek);
   }
 
@@ -84,8 +83,10 @@ function createMonth(year: number, monthIndex: number, today: Date): CalendarMon
 }
 
 export function createYearCalendar(year: number): CalendarYear {
-  if (!Number.isInteger(year) || year <= 0) {
-    throw new Error(`年の指定が不正です: "${year}"`);
+  if (!Number.isInteger(year) || year <= 0 || year > 9999) {
+    throw new Error(
+      `年の指定が不正です（1〜9999の整数で指定してください）: "${year}"`,
+    );
   }
 
   const today = new Date();
@@ -94,6 +95,7 @@ export function createYearCalendar(year: number): CalendarYear {
   return {
     year,
     months,
+    weekdayLabels: [...WEEKDAY_LABELS],
   };
 }
 
@@ -108,8 +110,10 @@ export function parseYear(value: string | undefined, fallbackYear: number): numb
     throw new Error(`年は数値で指定してください: "${value}"`);
   }
 
-  if (parsedYear <= 0) {
-    throw new Error(`年の指定が不正です（1以上の整数で指定してください）: "${value}"`);
+  if (parsedYear <= 0 || parsedYear > 9999) {
+    throw new Error(
+      `年の指定が不正です（1〜9999の整数で指定してください）: "${value}"`,
+    );
   }
 
   return parsedYear;

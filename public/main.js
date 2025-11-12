@@ -1,15 +1,14 @@
-const WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
-
 const calendarElement = document.getElementById("calendar");
 const yearForm = document.getElementById("yearForm");
 const yearInput = document.getElementById("yearInput");
 const yearError = document.getElementById("yearError");
 const monthTemplate = document.getElementById("monthTemplate");
 
-function createWeekdayHeaderRow() {
+function createWeekdayHeaderRow(labels) {
   const fragment = document.createDocumentFragment();
-  WEEKDAY_LABELS.forEach((label) => {
+  labels.forEach((label) => {
     const th = document.createElement("th");
+    th.scope = "col";
     th.textContent = label;
     fragment.appendChild(th);
   });
@@ -37,8 +36,11 @@ function renderWeeks(tbody, weeks) {
 }
 
 function renderCalendar(calendar) {
-  calendarElement.innerHTML = "";
-  const weekdayHeader = createWeekdayHeaderRow();
+  calendarElement.replaceChildren();
+  const weekdayLabels = Array.isArray(calendar.weekdayLabels)
+    ? calendar.weekdayLabels
+    : [];
+  const weekdayHeader = createWeekdayHeaderRow(weekdayLabels);
 
   calendar.months.forEach((month) => {
     const firstChild = monthTemplate.content.firstElementChild;
@@ -50,10 +52,14 @@ function renderCalendar(calendar) {
     }
     const monthNode = firstChild.cloneNode(true);
     const header = monthNode.querySelector(".month-header");
+    const caption = monthNode.querySelector(".month-caption");
     const weekdayRow = monthNode.querySelector(".weekday-row");
     const weeksBody = monthNode.querySelector(".weeks");
 
     header.textContent = month.title;
+    if (caption) {
+      caption.textContent = month.title;
+    }
     weekdayRow.appendChild(weekdayHeader.cloneNode(true));
     renderWeeks(weeksBody, month.weeks);
 
@@ -95,11 +101,10 @@ async function loadCalendar(year) {
     console.error(error);
     const message =
       error instanceof Error ? error.message : "カレンダーを読み込めませんでした。";
-    calendarElement.innerHTML = "";
     const paragraph = document.createElement("p");
     paragraph.className = "error";
     paragraph.textContent = message;
-    calendarElement.appendChild(paragraph);
+    calendarElement.replaceChildren(paragraph);
   }
 }
 
@@ -110,9 +115,9 @@ function initYearForm() {
   yearForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const year = Number.parseInt(yearInput.value, 10);
-    const isValid = !Number.isNaN(year) && year > 0;
+    const isValid = !Number.isNaN(year) && year > 0 && year <= 9999;
     if (yearError) {
-      yearError.textContent = isValid ? "" : "年の指定が不正です";
+      yearError.textContent = isValid ? "" : "年は1から9999までの整数を入力してください";
     }
 
     if (!isValid) {
@@ -123,7 +128,7 @@ function initYearForm() {
 }
 
 function init() {
-  if (!calendarElement || !yearForm || !yearInput || !monthTemplate) {
+  if (!calendarElement || !yearForm || !yearInput || !yearError || !monthTemplate) {
     console.error("必要なUI要素が見つかりませんでした。");
     return;
   }
