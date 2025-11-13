@@ -1,3 +1,5 @@
+import { fetchCalendarData } from "./calendarApi.js";
+
 const calendarElement = document.getElementById("calendar");
 const yearForm = document.getElementById("yearForm");
 const yearInput = document.getElementById("yearInput");
@@ -10,15 +12,49 @@ const yearChartTrigger = document.getElementById("yearChartTrigger");
 const yearChartModal = document.getElementById("yearChartModal");
 const yearChartContainer = document.getElementById("yearChartContainer");
 const yearChartCloseButton = document.getElementById("yearChartCloseButton");
+const csvFileInput = document.getElementById("csvFileInput");
+const csvResetButton = document.getElementById("csvResetButton");
+const csvError = document.getElementById("csvError");
+const csvStatus = document.getElementById("csvStatus");
+const csvFileName = document.getElementById("csvFileName");
+const csvFileTrigger = document.querySelector("[data-csv-trigger]");
 
 const RENDER_MODE = {
   GRID: "grid",
   MODAL: "modal",
 };
 
+function getEffectiveYearValue() {
+  const parsed = Number.parseInt(yearInput?.value ?? "", 10);
+  if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 9999) {
+    return parsed;
+  }
+  const fallback = new Date().getFullYear();
+  return fallback;
+}
+
+function setCsvError(message) {
+  if (csvError) {
+    csvError.textContent = message ?? "";
+  }
+}
+
+function setCsvStatus(message) {
+  if (csvStatus) {
+    csvStatus.textContent = message ?? "";
+  }
+}
+
+function setCsvFileName(text) {
+  if (csvFileName) {
+    csvFileName.textContent = text ?? "";
+  }
+}
+
 let lastFocusedMonth = null;
 let lastFocusedYearChartTrigger = null;
 let latestCalendarPayload = null;
+let activeCsvContent = null;
 
 function fillWeekdayRow(row, labels) {
   row.replaceChildren();
@@ -756,36 +792,12 @@ function renderCalendar(calendar) {
   });
 }
 
-async function fetchCalendar(year) {
-  const response = await fetch(`/api/calendar?year=${encodeURIComponent(year)}`);
-  if (!response.ok) {
-    let errorMessage = `カレンダーを取得できませんでした (${response.status})`;
-    const bodyText = await response.text().catch(() => "");
-    if (bodyText) {
-      let errorDetail = bodyText;
-      try {
-        const data = JSON.parse(bodyText);
-        if (data && typeof data === "object") {
-          if (typeof data.error === "string" && data.error) {
-            errorDetail = data.error;
-          } else if (typeof data.message === "string" && data.message) {
-            errorDetail = data.message;
-          }
-        }
-      } catch {
-        // JSON に変換できない場合は生テキストを利用する
-      }
-      errorMessage += `: ${errorDetail}`;
-    }
-    throw new Error(errorMessage);
-  }
-  return response.json();
-}
-
 async function loadCalendar(year) {
   try {
-    const calendar = await fetchCalendar(year);
+    const requestOptions = activeCsvContent ? { csvContent: activeCsvContent } : {};
+    const calendar = await fetchCalendarData(year, requestOptions);
     renderCalendar(calendar);
+    return true;
   } catch (error) {
     console.error(error);
     const message =
@@ -794,12 +806,15 @@ async function loadCalendar(year) {
     paragraph.className = "error";
     paragraph.textContent = message;
     calendarElement.replaceChildren(paragraph);
+    return false;
   }
 }
 
 function initYearForm() {
   const currentYear = new Date().getFullYear();
-  yearInput.value = String(currentYear);
+  if (!yearInput.value) {
+    yearInput.value = String(currentYear);
+  }
 
   yearForm.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -812,7 +827,7 @@ function initYearForm() {
     if (!isValid) {
       return;
     }
-    loadCalendar(year);
+    void loadCalendar(year);
   });
 }
 
@@ -826,6 +841,67 @@ function initYearChartTrigger() {
     }
     lastFocusedYearChartTrigger = yearChartTrigger;
     openYearChartModal(latestCalendarPayload);
+  });
+}
+
+function initCsvUpload() {
+  if (!csvFileInput || !csvResetButton) {
+    return;
+  }
+
+  setCsvStatus("デフォルトのCSVを使用します。");
+  setCsvFileName("未選択");
+
+  if (csvFileTrigger instanceof HTMLElement) {
+    csvFileTrigger.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        csvFileInput.click();
+      }
+    });
+  }
+
+  csvFileInput.addEventListener("change", async () => {
+    const [file] = csvFileInput.files ?? [];
+    if (!file) {
+      setCsvFileName("未選択");
+      return;
+    }
+
+    setCsvError("");
+    setCsvStatus(`${file.name} を読み込み中です…`);
+    try {
+      const content = await file.text();
+      if (!content.trim()) {
+        setCsvError("CSVファイルにデータがありません。");
+        setCsvStatus("");
+        csvFileInput.value = "";
+        return;
+      }
+      activeCsvContent = content;
+      setCsvFileName(file.name);
+      setCsvStatus(`${file.name} を使用しています。`);
+      const year = getEffectiveYearValue();
+      const success = await loadCalendar(year);
+      if (!success) {
+        setCsvError("CSVの解析に失敗しました。ファイル内容をご確認ください。");
+      }
+    } catch (error) {
+      console.error(error);
+      setCsvError("CSVファイルの読み込みに失敗しました。");
+      setCsvStatus("");
+    } finally {
+      csvFileInput.value = "";
+    }
+  });
+
+  csvResetButton.addEventListener("click", async () => {
+    setCsvError("");
+    activeCsvContent = null;
+    setCsvFileName("未選択");
+    setCsvStatus("デフォルトのCSVを使用します。");
+    const year = getEffectiveYearValue();
+    await loadCalendar(year);
   });
 }
 
@@ -896,7 +972,13 @@ function init() {
     !yearChartTrigger ||
     !yearChartModal ||
     !yearChartContainer ||
-    !yearChartCloseButton
+    !yearChartCloseButton ||
+    !csvFileInput ||
+    !csvResetButton ||
+    !csvStatus ||
+    !csvError ||
+    !csvFileName ||
+    !csvFileTrigger
   ) {
     console.error("必要なUI要素が見つかりませんでした:", {
       calendarElement: !!calendarElement,
@@ -911,11 +993,18 @@ function init() {
       yearChartModal: !!yearChartModal,
       yearChartContainer: !!yearChartContainer,
       yearChartCloseButton: !!yearChartCloseButton,
+      csvFileInput: !!csvFileInput,
+      csvResetButton: !!csvResetButton,
+      csvStatus: !!csvStatus,
+      csvError: !!csvError,
+      csvFileName: !!csvFileName,
+      csvFileTrigger: !!csvFileTrigger,
     });
     return;
   }
 
   initYearForm();
+  initCsvUpload();
   initYearChartTrigger();
   initMonthModal();
   initYearChartModal();

@@ -1,13 +1,20 @@
 import express from "express";
 import path from "node:path";
 import { createYearCalendar, parseYear } from "./calendar";
-import { getTradeDataForYear } from "./trades";
+import { getTradeDataForYear, TradeDataQueryOptions } from "./trades";
 
 const parsedPort = Number.parseInt(process.env.PORT ?? "3000", 10);
 const DEFAULT_PORT =
   Number.isNaN(parsedPort) || parsedPort < 1 || parsedPort > 65535 ? 3000 : parsedPort;
 const HOST = process.env.HOST ?? "localhost";
 const APP_TITLE = "年間カレンダー";
+
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ValidationError";
+  }
+}
 
 function resolvePublicDirectory(): string {
   return path.resolve(__dirname, "..", "public");
@@ -37,49 +44,134 @@ async function launchBrowser(url: string): Promise<void> {
   }
 }
 
+async function buildCalendarPayload(year: number, options?: TradeDataQueryOptions) {
+  const calendar = createYearCalendar(year);
+  const { summaries, tradesByDate } = await getTradeDataForYear(year, options);
+  return {
+    ...calendar,
+    tradeSummaries: summaries,
+    dailyTrades: tradesByDate,
+  };
+}
+
+function handleCalendarError(res: express.Response, error: unknown) {
+  const message = error instanceof Error ? error.message : "カレンダー生成中にエラーが発生しました";
+  res.status(400).json({ error: message });
+}
+
+function parseYearOrThrow(value: string | undefined, fallbackYear: number): number {
+  try {
+    return parseYear(value, fallbackYear);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "不正なリクエストです";
+    throw new ValidationError(message);
+  }
+}
+
+function readQueryParam(value: unknown, field: string): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    throw new ValidationError(`${field} パラメータは1つだけ指定してください`);
+  }
+  if (typeof value === "object" && value !== null) {
+    throw new ValidationError(`${field} パラメータの形式が不正です`);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+  return undefined;
+}
+
+function parseQueryRequest(
+  req: express.Request,
+): { year: number; options?: TradeDataQueryOptions } {
+  const now = new Date();
+  const yearParam = readQueryParam(req.query?.year, "year");
+  const csvPathParam = readQueryParam(req.query?.csvPath, "csvPath");
+  const year = parseYearOrThrow(yearParam, now.getFullYear());
+  const options = csvPathParam ? { csvPath: csvPathParam } : undefined;
+  return { year, options };
+}
+
 function createServer() {
   const app = express();
   const publicDirectory = resolvePublicDirectory();
 
+  app.use(express.json({ limit: "5mb" }));
   app.use(express.static(publicDirectory));
 
   app.get("/api/calendar", async (req, res) => {
-    const now = new Date();
-    let year: number;
-
     try {
-      const { year: yearQuery } = req.query;
-
-      if (Array.isArray(yearQuery)) {
-        throw new Error("year パラメータは1つだけ指定してください");
-      }
-
-      if (typeof yearQuery === "object" && yearQuery !== null) {
-        throw new Error("year パラメータの形式が不正です");
-      }
-
-      const yearParam = typeof yearQuery === "string" ? yearQuery : undefined;
-      year = parseYear(yearParam, now.getFullYear());
+      const { year, options } = parseQueryRequest(req);
+      const payload = await buildCalendarPayload(year, options);
+      res.json(payload);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "不正なリクエストです";
-      res.status(400).json({ error: message });
-      return;
+      if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      handleCalendarError(res, error);
     }
-
-    try {
-      const calendar = createYearCalendar(year);
-      const { summaries, tradesByDate } = await getTradeDataForYear(year);
-      res.json({
-        ...calendar,
-        tradeSummaries: summaries,
-        dailyTrades: tradesByDate,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "カレンダー生成中にエラーが発生しました";
-      res.status(400).json({ error: message });
-    }
-
   });
+
+  async function parseUploadRequest(
+    req: express.Request,
+  ): Promise<{ year: number; options: TradeDataQueryOptions }> {
+    const now = new Date();
+
+    const body = req.body;
+    if (!body || typeof body !== "object") {
+      throw new ValidationError("JSON ボディが必要です");
+    }
+    const { year: yearBody, csvContent: content, csvPath: pathBody } = body as Record<
+      string,
+      unknown
+    >;
+    const yearParam =
+      typeof yearBody === "number"
+        ? String(yearBody)
+        : typeof yearBody === "string"
+          ? yearBody
+          : undefined;
+    const year = parseYearOrThrow(yearParam, now.getFullYear());
+
+    if (typeof content === "string") {
+      const trimmed = content.trim();
+      if (trimmed.length === 0) {
+        throw new ValidationError("csvContent は空ではいけません");
+      }
+      return { year, options: { csvContent: content } };
+    }
+
+    if (typeof pathBody === "string") {
+      const trimmedPath = pathBody.trim();
+      if (trimmedPath.length > 0) {
+        return { year, options: { csvPath: trimmedPath } };
+      }
+    }
+
+    throw new ValidationError("csvContent もしくは csvPath を指定してください");
+  }
+
+  async function handleUpload(req: express.Request, res: express.Response) {
+    try {
+      const { year, options } = await parseUploadRequest(req);
+      const payload = await buildCalendarPayload(year, options);
+      res.json(payload);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      handleCalendarError(res, error);
+    }
+  }
+
+  app.post("/api/calendar/upload", handleUpload);
+  app.post("/api/calendar", handleUpload);
 
   app.get(/.*/, (_, res) => {
     res.sendFile(path.join(publicDirectory, "index.html"));
