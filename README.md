@@ -28,3 +28,12 @@ npm run dev
 ```bash
 npm run build
 npm start
+```
+
+## 別CSVファイルの指定
+
+`/api/calendar` エンドポイントに `csvPath` クエリパラメータを付けると、デフォルトの `docs/dummy.csv` ではなく任意の CSV を読み込ませることができます。相対パスはリポジトリルートからの解釈です。
+
+```bash
+curl "http://localhost:3000/api/calendar?year=2024&csvPath=docs/your_trades.csv"
+```

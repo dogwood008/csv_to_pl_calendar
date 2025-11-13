@@ -46,9 +46,10 @@ function createServer() {
   app.get("/api/calendar", async (req, res) => {
     const now = new Date();
     let year: number;
+    let csvPath: string | undefined;
 
     try {
-      const { year: yearQuery } = req.query;
+      const { year: yearQuery, csvPath: csvPathQuery } = req.query;
 
       if (Array.isArray(yearQuery)) {
         throw new Error("year パラメータは1つだけ指定してください");
@@ -60,6 +61,17 @@ function createServer() {
 
       const yearParam = typeof yearQuery === "string" ? yearQuery : undefined;
       year = parseYear(yearParam, now.getFullYear());
+
+      if (Array.isArray(csvPathQuery)) {
+        throw new Error("csvPath パラメータは1つだけ指定してください");
+      }
+
+      if (typeof csvPathQuery === "object" && csvPathQuery !== null) {
+        throw new Error("csvPath パラメータの形式が不正です");
+      }
+
+      const csvCandidate = typeof csvPathQuery === "string" ? csvPathQuery.trim() : "";
+      csvPath = csvCandidate.length > 0 ? csvCandidate : undefined;
     } catch (error) {
       const message = error instanceof Error ? error.message : "不正なリクエストです";
       res.status(400).json({ error: message });
@@ -68,7 +80,8 @@ function createServer() {
 
     try {
       const calendar = createYearCalendar(year);
-      const { summaries, tradesByDate } = await getTradeDataForYear(year);
+      const tradeDataOptions = csvPath ? { csvPath } : undefined;
+      const { summaries, tradesByDate } = await getTradeDataForYear(year, tradeDataOptions);
       res.json({
         ...calendar,
         tradeSummaries: summaries,

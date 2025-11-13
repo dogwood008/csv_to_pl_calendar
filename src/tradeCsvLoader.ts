@@ -13,7 +13,7 @@ export interface KabucomCsvLoaderOptions {
 }
 
 export function createKabucomCsvLoader(options: KabucomCsvLoaderOptions = {}): TradeCsvLoader {
-  const resolvedPath = options.csvPath ?? resolveCsvPath();
+  const resolvedPath = resolveCsvPath(options.csvPath);
   return new KabucomCsvLoader(resolvedPath);
 }
 
@@ -21,7 +21,13 @@ export function createDefaultTradeCsvLoader(): TradeCsvLoader {
   return createKabucomCsvLoader();
 }
 
-function resolveCsvPath(): string {
+function resolveCsvPath(csvPath?: string): string {
+  if (csvPath) {
+    const trimmed = csvPath.trim();
+    if (trimmed.length > 0) {
+      return path.isAbsolute(trimmed) ? trimmed : path.resolve(process.cwd(), trimmed);
+    }
+  }
   return path.resolve(__dirname, ...DEFAULT_CSV_RELATIVE_PATH);
 }
 
