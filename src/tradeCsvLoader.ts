@@ -6,7 +6,8 @@ export interface TradeCsvLoader {
   loadRecords(): Promise<TradeRecord[]>;
 }
 
-const DEFAULT_CSV_RELATIVE_PATH = ["..", "docs", "dummy.csv"];
+const PROJECT_ROOT = path.resolve(__dirname, "..");
+const DEFAULT_CSV_RELATIVE_PATH = ["docs", "dummy.csv"];
 
 export interface KabucomCsvLoaderOptions {
   csvPath?: string;
@@ -25,14 +26,26 @@ export function createCsvLoaderFromContent(csvContent: string): TradeCsvLoader {
   return new InlineCsvLoader(csvContent);
 }
 
+function ensureWithinProjectRoot(targetPath: string): string {
+  const resolved = path.resolve(targetPath);
+  const relative = path.relative(PROJECT_ROOT, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("CSVファイルの参照はプロジェクトルート配下のみ許可されています");
+  }
+  return resolved;
+}
+
 function resolveCsvPath(csvPath?: string): string {
   if (csvPath) {
     const trimmed = csvPath.trim();
     if (trimmed.length > 0) {
-      return path.isAbsolute(trimmed) ? trimmed : path.resolve(process.cwd(), trimmed);
+      const candidate = path.isAbsolute(trimmed)
+        ? path.normalize(trimmed)
+        : path.resolve(PROJECT_ROOT, trimmed);
+      return ensureWithinProjectRoot(candidate);
     }
   }
-  return path.resolve(__dirname, ...DEFAULT_CSV_RELATIVE_PATH);
+  return path.resolve(PROJECT_ROOT, ...DEFAULT_CSV_RELATIVE_PATH);
 }
 
 class KabucomCsvLoader implements TradeCsvLoader {
