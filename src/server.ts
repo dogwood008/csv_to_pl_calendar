@@ -121,9 +121,6 @@ function createServer() {
     req: express.Request,
   ): Promise<{ year: number; options: TradeDataQueryOptions }> {
     const now = new Date();
-    let year: number;
-    let csvContent: string | undefined;
-    let csvPath: string | undefined;
 
     const body = req.body;
     if (!body || typeof body !== "object") {
@@ -139,26 +136,23 @@ function createServer() {
         : typeof yearBody === "string"
           ? yearBody
           : undefined;
-    year = parseYearOrThrow(yearParam, now.getFullYear());
+    const year = parseYearOrThrow(yearParam, now.getFullYear());
 
     if (typeof content === "string") {
       const trimmed = content.trim();
       if (trimmed.length === 0) {
         throw new ValidationError("csvContent は空ではいけません");
       }
-      csvContent = content;
-    } else if (typeof pathBody === "string" && pathBody.trim().length > 0) {
-      csvPath = pathBody.trim();
-    } else {
-      throw new ValidationError("csvContent もしくは csvPath を指定してください");
+      return { year, options: { csvContent: content } };
     }
 
-    if (csvContent) {
-      return { year, options: { csvContent } };
+    if (typeof pathBody === "string") {
+      const trimmedPath = pathBody.trim();
+      if (trimmedPath.length > 0) {
+        return { year, options: { csvPath: trimmedPath } };
+      }
     }
-    if (csvPath) {
-      return { year, options: { csvPath } };
-    }
+
     throw new ValidationError("csvContent もしくは csvPath を指定してください");
   }
 
