@@ -1052,17 +1052,20 @@ function openMonthModal(month, calendar, sourceNode) {
 
   let selectedCell = null;
   const detailPanel = createDayDetailPanel();
-  let dayChartNode = createDailyCumulativeChart(null, []);
-  enableChartZoom(dayChartNode, () =>
-    createDailyCumulativeChart(null, [], ZOOM_CHART_DIMENSIONS),
-  );
+  let dayChartNode = document.createElement("div");
+  dayChartNode.className = "month-modal__day-chart-placeholder";
+
+  const makeDayChartNode = (isoDate, tradesForDay) => {
+    const chart = createDailyCumulativeChart(isoDate, tradesForDay);
+    enableChartZoom(chart, () =>
+      createDailyCumulativeChart(isoDate, tradesForDay, ZOOM_CHART_DIMENSIONS),
+    );
+    return chart;
+  };
 
   const updateDayChart = (isoDate) => {
     const tradesForDay = isoDate ? dailyTrades[isoDate] ?? [] : [];
-    const nextChart = createDailyCumulativeChart(isoDate, tradesForDay);
-    enableChartZoom(nextChart, () =>
-      createDailyCumulativeChart(isoDate, tradesForDay, ZOOM_CHART_DIMENSIONS),
-    );
+    const nextChart = makeDayChartNode(isoDate, tradesForDay);
     dayChartNode.replaceWith(nextChart);
     dayChartNode = nextChart;
   };
