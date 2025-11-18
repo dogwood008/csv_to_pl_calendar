@@ -432,7 +432,6 @@ function buildPolylinePoints(series, width, height, paddingX, paddingY, options 
   const xMin = xValues ? Math.min(...xValues) : 0;
   const xMax = xValues ? Math.max(...xValues) : series.length - 1;
   const xRange = Math.max(xMax - xMin, 1);
-  const step = series.length > 1 ? chartWidth / (series.length - 1) : 0;
 
   const coordinates = series.map((point, index) => {
     const progress = xValues
