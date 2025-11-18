@@ -12,6 +12,10 @@ const yearChartTrigger = document.getElementById("yearChartTrigger");
 const yearChartModal = document.getElementById("yearChartModal");
 const yearChartContainer = document.getElementById("yearChartContainer");
 const yearChartCloseButton = document.getElementById("yearChartCloseButton");
+const chartZoomModal = document.getElementById("chartZoomModal");
+const chartZoomContainer = document.getElementById("chartZoomContainer");
+const chartZoomCloseButton = document.getElementById("chartZoomCloseButton");
+const chartZoomTitle = document.getElementById("chartZoomTitle");
 const csvFileInput = document.getElementById("csvFileInput");
 const csvResetButton = document.getElementById("csvResetButton");
 const csvError = document.getElementById("csvError");
@@ -22,6 +26,13 @@ const csvFileTrigger = document.querySelector("[data-csv-trigger]");
 const RENDER_MODE = {
   GRID: "grid",
   MODAL: "modal",
+};
+
+const ZOOM_CHART_DIMENSIONS = {
+  width: 420,
+  height: 220,
+  paddingX: 24,
+  paddingY: 24,
 };
 
 function getEffectiveYearValue() {
@@ -53,6 +64,7 @@ function setCsvFileName(text) {
 
 let lastFocusedMonth = null;
 let lastFocusedYearChartTrigger = null;
+let lastFocusedChartZoomTrigger = null;
 let latestCalendarPayload = null;
 let activeCsvContent = null;
 
@@ -516,6 +528,44 @@ function positionTooltip(tooltip, wrapperRect, x, y) {
   tooltip.style.transform = `translate(${left}px, ${top}px)`;
 }
 
+function enableChartZoom(chartNode, createZoomedChart, options = {}) {
+  if (
+    !chartNode ||
+    typeof chartNode !== "object" ||
+    typeof createZoomedChart !== "function" ||
+    !chartZoomModal ||
+    !chartZoomContainer
+  ) {
+    return;
+  }
+  const providedLabel = options.label;
+  const fallbackLabel =
+    chartNode.querySelector(".month-chart__title")?.textContent ?? "グラフ";
+  const label = providedLabel ?? fallbackLabel;
+  const zoomTitle = `${label}の拡大表示`;
+  const openZoom = () => {
+    const zoomedChart = createZoomedChart();
+    if (!(zoomedChart instanceof HTMLElement)) {
+      return;
+    }
+    lastFocusedChartZoomTrigger = chartNode;
+    openChartZoomModal(zoomedChart, { title: zoomTitle });
+  };
+  chartNode.classList.add("month-chart--zoomable");
+  chartNode.tabIndex = 0;
+  chartNode.setAttribute("role", "button");
+  chartNode.setAttribute("aria-label", `${label}を拡大表示`);
+  chartNode.addEventListener("click", () => {
+    openZoom();
+  });
+  chartNode.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openZoom();
+    }
+  });
+}
+
 function createCumulativeChartFromSeries(series, options = {}) {
   const {
     title = "積み上げ損益",
@@ -753,11 +803,12 @@ function createCumulativeChartFromSeries(series, options = {}) {
   return container;
 }
 
-function createCumulativeChart(month, tradeSummaries) {
+function createCumulativeChart(month, tradeSummaries, options = {}) {
   const series = buildCumulativeSeries(month, tradeSummaries);
   return createCumulativeChartFromSeries(series, {
     title: "積み上げ損益",
     ariaLabel: `${month.title}の積み上げ損益推移`,
+    ...options,
   });
 }
 
@@ -804,7 +855,7 @@ function createDailyChartTicks({ series, coordinates, xValues, xMin, xMax }) {
     .filter(Boolean);
 }
 
-function createDailyCumulativeChart(isoDate, trades) {
+function createDailyCumulativeChart(isoDate, trades, options = {}) {
   const hasDate = typeof isoDate === "string" && isoDate.length > 0;
   const dateLabel = hasDate ? formatJapaneseDate(isoDate) : null;
   const safeTrades = Array.isArray(trades) ? trades : [];
@@ -837,6 +888,7 @@ function createDailyCumulativeChart(isoDate, trades) {
           return index;
         }
       : undefined,
+    ...options,
   });
 }
 
@@ -852,6 +904,45 @@ function createYearlyCumulativeChart(calendar, tradeSummaries) {
     paddingX: 16,
     paddingY: 16,
   });
+}
+
+function openChartZoomModal(content, options = {}) {
+  if (!chartZoomModal || !chartZoomContainer || !(content instanceof HTMLElement)) {
+    return;
+  }
+  const title = options.title ?? "グラフの拡大表示";
+  chartZoomContainer.replaceChildren(content);
+  if (chartZoomTitle) {
+    chartZoomTitle.textContent = title;
+  }
+  chartZoomModal.classList.add("is-open");
+  chartZoomModal.setAttribute("aria-hidden", "false");
+  if (!document.body.classList.contains("modal-open")) {
+    document.body.classList.add("modal-open");
+  }
+  chartZoomCloseButton?.focus();
+}
+
+function closeChartZoomModal(options = {}) {
+  const { restoreFocus = true } = options;
+  if (!chartZoomModal || !chartZoomContainer) {
+    return;
+  }
+  if (!chartZoomModal.classList.contains("is-open")) {
+    return;
+  }
+  chartZoomContainer.replaceChildren();
+  chartZoomModal.classList.remove("is-open");
+  chartZoomModal.setAttribute("aria-hidden", "true");
+  if (
+    (!monthModal || !monthModal.classList.contains("is-open")) &&
+    (!yearChartModal || !yearChartModal.classList.contains("is-open"))
+  ) {
+    document.body.classList.remove("modal-open");
+  }
+  if (restoreFocus && lastFocusedChartZoomTrigger instanceof HTMLElement) {
+    lastFocusedChartZoomTrigger.focus();
+  }
 }
 
 function openYearChartModal(calendar) {
@@ -887,12 +978,38 @@ function closeYearChartModal(options = {}) {
   yearChartContainer.replaceChildren();
   yearChartModal.classList.remove("is-open");
   yearChartModal.setAttribute("aria-hidden", "true");
-  if (!monthModal || !monthModal.classList.contains("is-open")) {
+  if (
+    (!monthModal || !monthModal.classList.contains("is-open")) &&
+    (!chartZoomModal || !chartZoomModal.classList.contains("is-open"))
+  ) {
     document.body.classList.remove("modal-open");
   }
   if (restoreFocus && lastFocusedYearChartTrigger instanceof HTMLElement) {
     lastFocusedYearChartTrigger.focus();
   }
+}
+
+function initChartZoomModal() {
+  if (!chartZoomModal || !chartZoomContainer) {
+    return;
+  }
+  document.querySelectorAll("[data-chart-zoom-close]").forEach((element) => {
+    element.addEventListener("click", () => {
+      closeChartZoomModal();
+    });
+  });
+  chartZoomModal.addEventListener("click", (event) => {
+    if (event.target === chartZoomModal) {
+      closeChartZoomModal();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && chartZoomModal.classList.contains("is-open")) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeChartZoomModal();
+    }
+  });
 }
 
 function openMonthModal(month, calendar, sourceNode) {
@@ -913,10 +1030,16 @@ function openMonthModal(month, calendar, sourceNode) {
   let selectedCell = null;
   const detailPanel = createDayDetailPanel();
   let dayChartNode = createDailyCumulativeChart(null, []);
+  enableChartZoom(dayChartNode, () =>
+    createDailyCumulativeChart(null, [], ZOOM_CHART_DIMENSIONS),
+  );
 
   const updateDayChart = (isoDate) => {
     const tradesForDay = isoDate ? dailyTrades[isoDate] ?? [] : [];
     const nextChart = createDailyCumulativeChart(isoDate, tradesForDay);
+    enableChartZoom(nextChart, () =>
+      createDailyCumulativeChart(isoDate, tradesForDay, ZOOM_CHART_DIMENSIONS),
+    );
     dayChartNode.replaceWith(nextChart);
     dayChartNode = nextChart;
   };
@@ -941,6 +1064,9 @@ function openMonthModal(month, calendar, sourceNode) {
     onDaySelect: handleDaySelect,
   });
   const chartNode = createCumulativeChart(month, tradeSummaries);
+  enableChartZoom(chartNode, () =>
+    createCumulativeChart(month, tradeSummaries, ZOOM_CHART_DIMENSIONS),
+  );
 
   const contentWrapper = document.createElement("div");
   contentWrapper.className = "month-modal__content";
@@ -978,11 +1104,15 @@ function closeMonthModal() {
   if (!monthModal.classList.contains("is-open")) {
     return;
   }
+  closeChartZoomModal({ restoreFocus: false });
   closeYearChartModal({ restoreFocus: false });
   modalCalendarContainer.replaceChildren();
   monthModal.classList.remove("is-open");
   monthModal.setAttribute("aria-hidden", "true");
-  if (!yearChartModal || !yearChartModal.classList.contains("is-open")) {
+  if (
+    (!yearChartModal || !yearChartModal.classList.contains("is-open")) &&
+    (!chartZoomModal || !chartZoomModal.classList.contains("is-open"))
+  ) {
     document.body.classList.remove("modal-open");
   }
   if (lastFocusedMonth instanceof HTMLElement) {
@@ -1192,6 +1322,10 @@ function init() {
     !yearChartModal ||
     !yearChartContainer ||
     !yearChartCloseButton ||
+    !chartZoomModal ||
+    !chartZoomContainer ||
+    !chartZoomCloseButton ||
+    !chartZoomTitle ||
     !csvFileInput ||
     !csvResetButton ||
     !csvStatus ||
@@ -1212,6 +1346,10 @@ function init() {
       yearChartModal: !!yearChartModal,
       yearChartContainer: !!yearChartContainer,
       yearChartCloseButton: !!yearChartCloseButton,
+      chartZoomModal: !!chartZoomModal,
+      chartZoomContainer: !!chartZoomContainer,
+      chartZoomCloseButton: !!chartZoomCloseButton,
+      chartZoomTitle: !!chartZoomTitle,
       csvFileInput: !!csvFileInput,
       csvResetButton: !!csvResetButton,
       csvStatus: !!csvStatus,
@@ -1227,6 +1365,7 @@ function init() {
   initYearChartTrigger();
   initMonthModal();
   initYearChartModal();
+  initChartZoomModal();
   const initialYear = Number.parseInt(yearInput.value, 10);
   void loadCalendar(initialYear);
 }
