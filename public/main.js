@@ -1027,6 +1027,7 @@ function initChartZoomModal() {
     if (event.key === "Escape" && chartZoomModal.classList.contains("is-open")) {
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
       closeChartZoomModal();
     }
   });
