@@ -755,15 +755,25 @@ function createCumulativeChartFromSeries(series, options = {}) {
     const ratio = (event.clientX - rect.left) / rect.width;
     const normalizedRatio = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0;
     const pointerX = normalizedRatio * width;
-    let closestIndex = 0;
-    let smallestDistance = Number.POSITIVE_INFINITY;
-    coordinates.forEach((coord, idx) => {
-      const distance = Math.abs(coord.x - pointerX);
-      if (distance < smallestDistance) {
-        smallestDistance = distance;
-        closestIndex = idx;
+    let left = 0;
+    let right = coordinates.length - 1;
+    while (left < right) {
+      const mid = Math.floor((left + right) / 2);
+      if (coordinates[mid].x < pointerX) {
+        left = mid + 1;
+      } else {
+        right = mid;
       }
-    });
+    }
+    let closestIndex = left;
+    if (closestIndex > 0) {
+      const prevIndex = closestIndex - 1;
+      const prevDistance = Math.abs(coordinates[prevIndex].x - pointerX);
+      const currentDistance = Math.abs(coordinates[closestIndex].x - pointerX);
+      if (prevDistance <= currentDistance) {
+        closestIndex = prevIndex;
+      }
+    }
     const coord = coordinates[closestIndex];
     if (!coord) {
       return;
