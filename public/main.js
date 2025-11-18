@@ -391,7 +391,18 @@ function buildDailyCumulativeSeries(isoDate, trades) {
     return [];
   }
   let cumulative = 0;
-  return trades.map((trade, index) => {
+  const sortedTrades = [...trades].sort((a, b) => {
+    const timeA =
+      a?.isoTime ??
+      (typeof a?.isoDateTime === "string" ? a.isoDateTime.split("T")[1] : undefined) ??
+      "00:00:00";
+    const timeB =
+      b?.isoTime ??
+      (typeof b?.isoDateTime === "string" ? b.isoDateTime.split("T")[1] : undefined) ??
+      "00:00:00";
+    return timeA.localeCompare(timeB);
+  });
+  return sortedTrades.map((trade, index) => {
     const net = typeof trade?.netProfit === "number" ? trade.netProfit : 0;
     cumulative += net;
     const isoTime =
