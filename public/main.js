@@ -806,8 +806,8 @@ function createCumulativeChartFromSeries(series, options = {}) {
 function createCumulativeChart(month, tradeSummaries, options = {}) {
   const series = buildCumulativeSeries(month, tradeSummaries);
   return createCumulativeChartFromSeries(series, {
-    title: "月次積み上げグラフ",
-    ariaLabel: `${month.title}の月次積み上げグラフの推移`,
+    title: "月次累積グラフ",
+    ariaLabel: `${month.title}の月次累積グラフの推移`,
     ...options,
   });
 }
