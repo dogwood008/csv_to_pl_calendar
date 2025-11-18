@@ -1,7 +1,7 @@
 import {
   createCsvLoaderFromContent,
   createDefaultTradeCsvLoader,
-  createKabucomCsvLoader,
+  createFileCsvLoader,
   TradeCsvLoader,
 } from "./tradeCsvLoader";
 import { DailyTradeSummary, TradeDataForYear, TradeDetail, TradeRecord } from "./tradeTypes";
@@ -46,7 +46,7 @@ function getLoader(options?: TradeDataQueryOptions): TradeCsvLoader {
     return createCsvLoaderFromContent(options.csvContent);
   }
   if (options?.csvPath && options.csvPath.trim().length > 0) {
-    return createKabucomCsvLoader({ csvPath: options.csvPath });
+    return createFileCsvLoader({ csvPath: options.csvPath });
   }
   return getActiveLoader();
 }
@@ -88,49 +88,7 @@ export async function getTradeDataForYear(
   options?: TradeDataQueryOptions,
 ): Promise<TradeDataForYear> {
   const records = await loadTradeRecords(options);
-  const summaries = new Map<string, DailyTradeSummary>();
-  const tradesByDate = new Map<string, TradeDetail[]>();
-
-  records.forEach((record) => {
-    if (!record.isoDate.startsWith(`${year}-`)) {
-      return;
-    }
-    const existing = summaries.get(record.isoDate);
-    const base: DailyTradeSummary =
-      existing ?? {
-        isoDate: record.isoDate,
-        tradeCount: 0,
-        buyCount: 0,
-        sellCount: 0,
-        totalQuantity: 0,
-        netProfit: 0,
-      };
-    base.tradeCount += 1;
-    base.totalQuantity += record.quantity;
-    if (record.side === "買") {
-      base.buyCount += 1;
-    } else if (record.side === "売") {
-      base.sellCount += 1;
-    }
-    base.netProfit += record.netProfit;
-    summaries.set(record.isoDate, base);
-
-    const existingTrades = tradesByDate.get(record.isoDate) ?? [];
-    existingTrades.push(record);
-    tradesByDate.set(record.isoDate, existingTrades);
-  });
-
-  const sortedTradesByDate = Array.from(tradesByDate.entries()).reduce<
-    Record<string, TradeDetail[]>
-  >((acc, [isoDate, trades]) => {
-    acc[isoDate] = sortTrades(trades);
-    return acc;
-  }, {});
-
-  return {
-    summaries: Object.fromEntries(summaries),
-    tradesByDate: sortedTradesByDate,
-  };
+  return aggregateTradeDataForYear(records, year);
 }
 
 export async function getDailyTradeSummariesForYear(
@@ -139,4 +97,71 @@ export async function getDailyTradeSummariesForYear(
 ): Promise<Record<string, DailyTradeSummary>> {
   const { summaries } = await getTradeDataForYear(year, options);
   return summaries;
+}
+
+function aggregateTradeDataForYear(records: TradeRecord[], year: number): TradeDataForYear {
+  const yearPrefix = `${year}-`;
+  const summaries = new Map<string, DailyTradeSummary>();
+  const tradesByDate = new Map<string, TradeDetail[]>();
+
+  records.forEach((record) => {
+    if (!record.isoDate.startsWith(yearPrefix)) {
+      return;
+    }
+    updateDailySummary(summaries, record);
+    appendTrade(tradesByDate, record);
+  });
+
+  return {
+    summaries: Object.fromEntries(summaries),
+    tradesByDate: buildSortedTradesIndex(tradesByDate),
+  };
+}
+
+function updateDailySummary(
+  summaries: Map<string, DailyTradeSummary>,
+  record: TradeRecord,
+): void {
+  const summary = summaries.get(record.isoDate) ?? createEmptySummary(record.isoDate);
+  summary.tradeCount += 1;
+  summary.totalQuantity += record.quantity;
+  if (record.side === "買") {
+    summary.buyCount += 1;
+  } else if (record.side === "売") {
+    summary.sellCount += 1;
+  }
+  summary.netProfit += record.netProfit;
+  summaries.set(record.isoDate, summary);
+}
+
+function createEmptySummary(isoDate: string): DailyTradeSummary {
+  return {
+    isoDate,
+    tradeCount: 0,
+    buyCount: 0,
+    sellCount: 0,
+    totalQuantity: 0,
+    netProfit: 0,
+  };
+}
+
+function appendTrade(
+  tradesByDate: Map<string, TradeDetail[]>,
+  record: TradeDetail,
+): void {
+  const existingTrades = tradesByDate.get(record.isoDate) ?? [];
+  existingTrades.push(record);
+  tradesByDate.set(record.isoDate, existingTrades);
+}
+
+function buildSortedTradesIndex(
+  tradesByDate: Map<string, TradeDetail[]>,
+): Record<string, TradeDetail[]> {
+  return Array.from(tradesByDate.entries()).reduce<Record<string, TradeDetail[]>>(
+    (acc, [isoDate, trades]) => {
+      acc[isoDate] = sortTrades(trades);
+      return acc;
+    },
+    {},
+  );
 }
