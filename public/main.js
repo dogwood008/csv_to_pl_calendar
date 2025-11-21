@@ -48,6 +48,7 @@ const SPREADSHEET_ENDPOINT_STORAGE_KEY = "spreadsheetEndpointUrl";
 const SPREADSHEET_PSK_STORAGE_KEY = "spreadsheetPsk";
 const DEFAULT_SPREADSHEET_ENDPOINT =
   "https://script.google.com/macros/s/AKfycbzIxdVW1G20fnrMeysplw2CQ3r2-qBgRd3dUBC97iRRkVbWNxAtC6OVQx9xnG1dNw/exec";
+const DEFAULT_SPREADSHEET_PSK = "testpsk";
 
 function getEffectiveYearValue() {
   const parsed = Number.parseInt(yearInput?.value ?? "", 10);
@@ -1409,7 +1410,7 @@ function initSpreadsheetImport() {
     spreadsheetSavePskCheckbox.checked = true;
   } else {
     if (!spreadsheetPskInput.value) {
-      spreadsheetPskInput.value = "testpsk";
+      spreadsheetPskInput.value = DEFAULT_SPREADSHEET_PSK;
     }
     spreadsheetSavePskCheckbox.checked = false;
   }
@@ -1459,7 +1460,7 @@ function initSpreadsheetImport() {
     saveSpreadsheetEndpoint(null);
     saveSpreadsheetPsk(null);
     spreadsheetEndpointInput.value = DEFAULT_SPREADSHEET_ENDPOINT;
-    spreadsheetPskInput.value = "testpsk";
+    spreadsheetPskInput.value = DEFAULT_SPREADSHEET_PSK;
     spreadsheetSavePskCheckbox.checked = false;
     await resetToDefaultCsv();
   });
