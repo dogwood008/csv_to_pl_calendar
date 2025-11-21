@@ -149,6 +149,7 @@ function applyDefaultCsvUiState() {
 async function resetToDefaultCsv() {
   activeCsvContent = null;
   applyDefaultCsvUiState();
+  setSpreadsheetError("");
   const savedEndpoint = readSavedSpreadsheetEndpoint();
   const spreadsheetMessage = savedEndpoint
     ? "保存済みのエンドポイントがあります。必要に応じて取得してください。"
