@@ -89,6 +89,15 @@ function setSpreadsheetStatus(message) {
   }
 }
 
+function resetSpreadsheetDefaults() {
+  if (!spreadsheetEndpointInput || !spreadsheetPskInput || !spreadsheetSavePskCheckbox) {
+    return;
+  }
+  spreadsheetEndpointInput.value = DEFAULT_SPREADSHEET_ENDPOINT;
+  spreadsheetPskInput.value = DEFAULT_SPREADSHEET_PSK;
+  spreadsheetSavePskCheckbox.checked = false;
+}
+
 function readSavedSpreadsheetEndpoint() {
   try {
     return localStorage.getItem(SPREADSHEET_ENDPOINT_STORAGE_KEY);
@@ -1459,9 +1468,7 @@ function initSpreadsheetImport() {
     setSpreadsheetError("");
     saveSpreadsheetEndpoint(null);
     saveSpreadsheetPsk(null);
-    spreadsheetEndpointInput.value = DEFAULT_SPREADSHEET_ENDPOINT;
-    spreadsheetPskInput.value = DEFAULT_SPREADSHEET_PSK;
-    spreadsheetSavePskCheckbox.checked = false;
+    resetSpreadsheetDefaults();
     await resetToDefaultCsv();
   });
 }
