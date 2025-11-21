@@ -91,7 +91,7 @@ export async function fetchSpreadsheetCsv(endpoint, preSharedKey) {
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     throw new Error(
-      `スプレッドシートの取得に失敗しました (${response.status}): ${detail || "通信エラー"}`,
+      `スプレッドシートの取得に失敗しました (${response.status}): ${detail || "詳細不明"}`,
     );
   }
 
