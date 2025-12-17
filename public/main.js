@@ -55,7 +55,7 @@ const UTF8_DECODER = new TextDecoder("utf-8");
 // public 配下はビルドを挟まず静的に配信しているため、共通モジュール化には追加のビルド工程が必要になる点も明示しておく。
 let shiftJisDecoder = null;
 try {
-  shiftJisDecoder = new TextDecoder("shift_jis");
+  shiftJisDecoder = new TextDecoder("shift_jis", { fatal: false });
 } catch (error) {
   console.warn("Shift_JIS デコーダーを初期化できませんでした:", error);
 }
