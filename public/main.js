@@ -52,6 +52,7 @@ const DEFAULT_SPREADSHEET_PSK = "testpsk";
 const UTF8_DECODER = new TextDecoder("utf-8");
 
 // サーバー側の src/csv/decodeCsv.ts と同等のエンコーディング判定をブラウザ単体で実行するため、重複実装をここに保持する。
+// public 配下はビルドを挟まず静的に配信しているため、共通モジュール化には追加のビルド工程が必要になる点も明示しておく。
 let shiftJisDecoder = null;
 try {
   shiftJisDecoder = new TextDecoder("shift_jis");
