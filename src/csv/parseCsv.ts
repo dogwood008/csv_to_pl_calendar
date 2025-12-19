@@ -1,4 +1,4 @@
-import { parse } from "csv-parse/sync";
+import { parse } from "csv-parse/browser/esm/sync";
 
 export function parseCsv(content: string): string[][] {
   if (!content || content.trim().length === 0) {
