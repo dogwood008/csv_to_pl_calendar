@@ -9,9 +9,9 @@ export interface CalendarPayload {
   dailyTrades: Awaited<ReturnType<typeof getTradeDataForYear>>["tradesByDate"];
 }
 
-async function buildCalendarPayload(
+export async function fetchCalendarData(
   year: number,
-  options?: TradeDataQueryOptions,
+  options: TradeDataQueryOptions = {},
 ): Promise<CalendarPayload> {
   const calendar = createYearCalendar(year);
   const { summaries, tradesByDate } = await getTradeDataForYear(year, options);
@@ -20,11 +20,4 @@ async function buildCalendarPayload(
     tradeSummaries: summaries,
     dailyTrades: tradesByDate,
   };
-}
-
-export async function fetchCalendarData(
-  year: number,
-  options: TradeDataQueryOptions = {},
-): Promise<CalendarPayload> {
-  return buildCalendarPayload(year, options);
 }
