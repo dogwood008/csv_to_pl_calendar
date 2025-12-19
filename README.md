@@ -8,7 +8,7 @@
 - **取引ヒートマップ**: CSV の日次損益を解析し、プラス日は緑、マイナス日は赤、ゼロは青でセル背景を塗り分けます。
 - **月モーダル & 日次詳細**: 月をクリックするとモーダルが開き、各日の損益や取引詳細（銘柄、数量、手数料、損益）を確認できます。
 - **累積損益チャート**: 月モーダル内に累積損益グラフを表示。さらにヘッダーの「年間推移」ボタンから 1 年間分の累積グラフをモーダルで閲覧できます。
-- **対応CSV**: kabu.com（既定の `public/data/dummy_kabucom.csv`）、GMOクリック証券（`docs/dummy_gmo_click_trades.csv`）、SBI OTC CFD の CSV をヘッダー自動判別で読み込みます。
+- **対応CSV**: kabu.com（既定の `public/data/dummy_kabucom.csv`）、GMOクリック証券（サンプル: `docs/dummy_gmo_click_trades.csv`）、SBI OTC CFD の CSV をヘッダー自動判別で読み込みます。
 
 ## セットアップ
 
