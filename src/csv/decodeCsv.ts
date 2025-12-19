@@ -1,5 +1,3 @@
-import { TextDecoder } from "node:util";
-
 const UTF8_DECODER = new TextDecoder("utf-8", { fatal: false });
 const SHIFT_JIS_DECODER = (() => {
   try {
@@ -18,12 +16,20 @@ function countReplacementChars(text: string): number {
   return matches ? matches.length : 0;
 }
 
-export function decodeCsvBuffer(buffer: Buffer): string {
-  if (!buffer || buffer.length === 0) {
+function normalizeBuffer(buffer: ArrayBuffer | Uint8Array): Uint8Array {
+  if (buffer instanceof Uint8Array) {
+    return buffer;
+  }
+  return new Uint8Array(buffer);
+}
+
+export function decodeCsvArrayBuffer(buffer: ArrayBuffer | Uint8Array): string {
+  if (!buffer || (buffer instanceof Uint8Array ? buffer.length === 0 : buffer.byteLength === 0)) {
     return "";
   }
 
-  const utf8Text = UTF8_DECODER.decode(buffer);
+  const normalized = normalizeBuffer(buffer);
+  const utf8Text = UTF8_DECODER.decode(normalized);
   const utf8Replacements = countReplacementChars(utf8Text);
   if (utf8Replacements === 0) {
     return utf8Text;
@@ -31,7 +37,7 @@ export function decodeCsvBuffer(buffer: Buffer): string {
 
   if (SHIFT_JIS_DECODER) {
     try {
-      const shiftJisText = SHIFT_JIS_DECODER.decode(buffer);
+      const shiftJisText = SHIFT_JIS_DECODER.decode(normalized);
       const shiftJisReplacements = countReplacementChars(shiftJisText);
       if (shiftJisReplacements === 0 || shiftJisReplacements < utf8Replacements) {
         return shiftJisText;
