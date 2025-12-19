@@ -24,7 +24,7 @@ function normalizeBuffer(buffer: ArrayBuffer | Uint8Array): Uint8Array {
 }
 
 export function decodeCsvArrayBuffer(buffer: ArrayBuffer | Uint8Array): string {
-  if (!buffer || (buffer instanceof Uint8Array ? buffer.length === 0 : buffer.byteLength === 0)) {
+  if (!buffer || buffer.byteLength === 0) {
     return "";
   }
 
